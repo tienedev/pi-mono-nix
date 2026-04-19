@@ -1,0 +1,73 @@
+name: Auto-update pi
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Check for new release
+        id: check
+        run: |
+          LATEST=$(curl -fsSL https://api.github.com/repos/badlogic/pi-mono/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          CURRENT=$(grep 'version = ' package.nix | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          if [ "$LATEST" != "$CURRENT" ]; then
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
+            echo "New version: $CURRENT -> $LATEST"
+          else
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
+            echo "Already up to date: $CURRENT"
+          fi
+
+      - name: Compute hashes
+        if: steps.check.outputs.needs_update == 'true'
+        id: hashes
+        run: |
+          VERSION=${{ steps.check.outputs.latest }}
+          BASE="https://github.com/badlogic/pi-mono/releases/download/v${VERSION}"
+          for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
+            HASH=$(nix-prefetch-url --type sha256 "${BASE}/pi-${platform}.tar.gz")
+            SRI=$(nix hash convert --hash-algo sha256 --to sri "$HASH")
+            echo "${platform}=${SRI}" >> "$GITHUB_OUTPUT"
+            echo "${platform}: ${SRI}"
+          done
+
+      - name: Update package.nix
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          VERSION=${{ steps.check.outputs.latest }}
+          sed -i "s/version = \".*\";/version = \"${VERSION}\";/" package.nix
+          sed -i "s|suffix = \"linux-x64\";\s*hash = \".*\";|suffix = \"linux-x64\"; hash = \"${{ steps.hashes.outputs.linux-x64 }}\";|" package.nix
+          sed -i "s|suffix = \"linux-arm64\";\s*hash = \".*\";|suffix = \"linux-arm64\"; hash = \"${{ steps.hashes.outputs.linux-arm64 }}\";|" package.nix
+          sed -i "s|suffix = \"darwin-x64\";\s*hash = \".*\";|suffix = \"darwin-x64\"; hash = \"${{ steps.hashes.outputs.darwin-x64 }}\";|" package.nix
+          sed -i "s|suffix = \"darwin-arm64\";\s*hash = \".*\";|suffix = \"darwin-arm64\"; hash = \"${{ steps.hashes.outputs.darwin-arm64 }}\";|" package.nix
+          echo "Updated package.nix to ${VERSION}"
+
+      - name: Update flake.lock
+        if: steps.check.outputs.needs_update == 'true'
+        run: nix --experimental-features 'nix-command flakes' flake update
+
+      - name: Smoke-build
+        if: steps.check.outputs.needs_update == 'true'
+        run: nix --experimental-features 'nix-command flakes' build .#pi --no-link
+
+      - name: Commit and push
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.nix flake.lock
+          git commit -m "chore: update pi to ${{ steps.check.outputs.latest }}"
+          git push
