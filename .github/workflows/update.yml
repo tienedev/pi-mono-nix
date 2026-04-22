@@ -49,10 +49,10 @@ jobs:
         run: |
           VERSION=${{ steps.check.outputs.latest }}
           sed -i "s/version = \".*\";/version = \"${VERSION}\";/" package.nix
-          sed -i "s|suffix = \"linux-x64\";\s*hash = \".*\";|suffix = \"linux-x64\"; hash = \"${{ steps.hashes.outputs.linux-x64 }}\";|" package.nix
-          sed -i "s|suffix = \"linux-arm64\";\s*hash = \".*\";|suffix = \"linux-arm64\"; hash = \"${{ steps.hashes.outputs.linux-arm64 }}\";|" package.nix
-          sed -i "s|suffix = \"darwin-x64\";\s*hash = \".*\";|suffix = \"darwin-x64\"; hash = \"${{ steps.hashes.outputs.darwin-x64 }}\";|" package.nix
-          sed -i "s|suffix = \"darwin-arm64\";\s*hash = \".*\";|suffix = \"darwin-arm64\"; hash = \"${{ steps.hashes.outputs.darwin-arm64 }}\";|" package.nix
+          sed -i "/suffix = \"linux-x64\"/{n; s|hash = \".*\";|hash = \"${{ steps.hashes.outputs.linux-x64 }}\";|;}" package.nix
+          sed -i "/suffix = \"linux-arm64\"/{n; s|hash = \".*\";|hash = \"${{ steps.hashes.outputs.linux-arm64 }}\";|;}" package.nix
+          sed -i "/suffix = \"darwin-x64\"/{n; s|hash = \".*\";|hash = \"${{ steps.hashes.outputs.darwin-x64 }}\";|;}" package.nix
+          sed -i "/suffix = \"darwin-arm64\"/{n; s|hash = \".*\";|hash = \"${{ steps.hashes.outputs.darwin-arm64 }}\";|;}" package.nix
           echo "Updated package.nix to ${VERSION}"
 
       - name: Update flake.lock
