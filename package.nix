@@ -10,7 +10,7 @@
   bubblewrap,
   procps,
   git,
-  nodejs_20,
+  nodejs_22,
   coreutils,
   bash,
   # Feature toggles (override via pi.override { withSandbox = false; })
@@ -52,7 +52,7 @@ let
     lib.optional withRipgrep ripgrep
     ++ lib.optional (withSandbox && stdenv.hostPlatform.isLinux) bubblewrap
     ++ lib.optional withGit git
-    ++ lib.optional withNodejs nodejs_20
+    ++ lib.optional withNodejs nodejs_22
     ++ [
       procps
       coreutils
