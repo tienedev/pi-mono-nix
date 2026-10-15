@@ -4,6 +4,7 @@
   fetchurl,
   makeBinaryWrapper,
   autoPatchelfHook,
+  libxcb,
   # Runtime tools — exposed in the wrapper's PATH.
   # Toggle or extend from the outside via .override { ... }.
   ripgrep,
@@ -23,24 +24,24 @@
 }:
 
 let
-  version = "0.75.4";
+  version = "1.2.0";
 
   platformMap = {
     x86_64-linux = {
       suffix = "linux-x64";
-      hash = "sha256-69nC5croJ3mi3p5/NMe+bkU+9LC2JjQNAtrLCfKfdjk=";
+      hash = "sha256-APw2z/3rzupaSCMNpizz+0YxePj+GFdmZS+WACokaEc=";
     };
     aarch64-linux = {
       suffix = "linux-arm64";
-      hash = "sha256-cl06ZU+eCCL8U3LifOgXsil4TDyW7q7AXenKqiv5/0s=";
+      hash = "sha256-2Fl+46IFBZLTjmf2tgmrVROd7tfoIAINkQ2E8Xu3q9Y=";
     };
     x86_64-darwin = {
       suffix = "darwin-x64";
-      hash = "sha256-TQiqriFC/ZURKZIgZsywzOPbfTfDImjqUwq+cjrzbF4=";
+      hash = "sha256-4Hn/AWrngnnPvWwbT//gchYvSnu4ea1hsE4uQ7zFNFU=";
     };
     aarch64-darwin = {
       suffix = "darwin-arm64";
-      hash = "sha256-NlgJIGV++hkrXIpq06NNdTHHtUUJMaRZJz51uxV6oJ0=";
+      hash = "sha256-q933aItLZ4HZET9jzVeOPAHc24fnH2bn7ByexsdheNE=";
     };
   };
 
@@ -79,6 +80,13 @@ stdenv.mkDerivation {
   nativeBuildInputs = [
     makeBinaryWrapper
   ] ++ lib.optionals stdenv.hostPlatform.isElf [ autoPatchelfHook ];
+
+  # Native node addons in the Linux bundle: libgcc_s (clipboard addon, 0.81+)
+  # and libxcb (native/linux/prebuilds/*/linux-platform-x11.node, 1.x).
+  buildInputs = lib.optionals stdenv.hostPlatform.isElf [
+    stdenv.cc.cc.lib
+    libxcb
+  ];
 
   installPhase = ''
     runHook preInstall
