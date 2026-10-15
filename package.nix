@@ -4,6 +4,7 @@
   fetchurl,
   makeBinaryWrapper,
   autoPatchelfHook,
+  libxcb,
   # Runtime tools — exposed in the wrapper's PATH.
   # Toggle or extend from the outside via .override { ... }.
   ripgrep,
@@ -80,9 +81,12 @@ stdenv.mkDerivation {
     makeBinaryWrapper
   ] ++ lib.optionals stdenv.hostPlatform.isElf [ autoPatchelfHook ];
 
-  # Native node addons in the bundle (e.g. @mariozechner/clipboard since
-  # 0.81) link against libgcc_s.
-  buildInputs = lib.optionals stdenv.hostPlatform.isElf [ stdenv.cc.cc.lib ];
+  # Native node addons in the Linux bundle: libgcc_s (clipboard addon, 0.81+)
+  # and libxcb (native/linux/prebuilds/*/linux-platform-x11.node, 1.x).
+  buildInputs = lib.optionals stdenv.hostPlatform.isElf [
+    stdenv.cc.cc.lib
+    libxcb
+  ];
 
   installPhase = ''
     runHook preInstall
